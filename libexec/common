@@ -167,7 +167,7 @@ git_push() {
 
   status "Pushing new commits with git to: $_hosts"
 
-  __sync_local "git push --tags $GIT_PUSH $_host $REFSPEC"
+  __sync_local "git push $GIT_PUSH $_host $REFSPEC"
 
   __exec_if_defined "post_git_push"
 }
