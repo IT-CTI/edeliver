@@ -28,6 +28,7 @@ defmodule Mix.Tasks.Release.Version do
     * `[append-][git-]branch[-unless-master]` Appends the current branch that is built. If
       `-unless-master` is used, the branch is only appended unless it is the master branch.
     * `[append-][build-]date` Appends the build date as YYYYMMDD
+    * `[append-][build-]time` Appends the build date as HHMMSS
     * `[append-][git-]commit-count[-all[-branches]|-branch]` Appends the number of commits
     * `[append-]mix-env` Appends the mix environment used while building the release
       from the current branch or across all branches (default).  Appending the commit count
@@ -83,8 +84,8 @@ defmodule Mix.Tasks.Release.Version do
   # Sets the release version to the new value by using the passed update funs.
   @spec update_release_version(modification_functions::[modification_fun], options::[String.t]) :: new_version::String.t
   defp update_release_version(modification_functions, options) do
-    {old_version, new_version} = Agent.get_and_update Mix.ProjectStack, fn(state) ->
-      [root=%{config: config}|rest] = state.stack
+    {old_version, new_version} = GenServer.call(Mix.ProjectStack, {:update_stack, fn stack ->
+      [root=%{config: config}|rest] = stack
       {old_version, new_version, config} = List.foldr config, {"","", []}, fn({key, value}, {old_version, new_version, config}) ->
         {old_version, new_version, value} = if key == :version do
           old_version = value
@@ -97,8 +98,9 @@ defmodule Mix.Tasks.Release.Version do
         {old_version, new_version, [{key, value}|config]}
       end
       stack = [%{root|config: config}|rest]
-      {{old_version, new_version}, %{state| stack: stack}}
-    end
+      {{old_version, new_version}, stack}
+    end})
+
     debug "Changed release version from #{old_version} to #{new_version}", options
   end
 
@@ -157,7 +159,7 @@ defmodule Mix.Tasks.Release.Version do
   """
   @spec parse_args(OptionParser.argv) :: :show | {:error, message::String.t} | {:modify, [modification_fun]}
   def parse_args(args) do
-    append_metadata_options = ["commit_count", "commit_count_branch", "revision", "date", "branch", "branch_unless_master", "mix_env"]
+    append_metadata_options = ["commit_count", "commit_count_branch", "revision", "date", "time", "branch", "branch_unless_master", "mix_env"]
     update_version_options  = ["major", "minor", "patch", "set"]
 
     args = normalize_args(args)
@@ -268,6 +270,7 @@ defmodule Mix.Tasks.Release.Version do
   def modify_version_commit_count_branch({version, has_metadata}), do: {add_metadata(version, __MODULE__.get_commit_count_branch, has_metadata), _has_metadata = true}
   def modify_version_revision({version, has_metadata}),            do: {add_metadata(version, __MODULE__.get_git_revision, has_metadata),        _has_metadata = true}
   def modify_version_date({version, has_metadata}),                do: {add_metadata(version, __MODULE__.get_date, has_metadata),                _has_metadata = true}
+  def modify_version_time({version, has_metadata}),                do: {add_metadata(version, __MODULE__.get_time, has_metadata),                _has_metadata = true}
   def modify_version_branch({version, has_metadata}),              do: {add_metadata(version, __MODULE__.get_branch, has_metadata),              _has_metadata = true}
   def modify_version_branch_unless_master({version, has_metadata}) do
     case __MODULE__.get_branch do
@@ -372,5 +375,12 @@ defmodule Mix.Tasks.Release.Version do
   def get_date() do
     {{year, month, day}, _time} = :calendar.local_time
     :io_lib.format('~4.10.0b~2.10.0b~2.10.0b', [year, month, day]) |> IO.iodata_to_binary
+  end
+
+  @doc "Gets the current date in the form hhmmss"
+  @spec get_time :: String.t
+  def get_time() do
+    {_date, {hour, minute, second}} = :calendar.local_time
+    :io_lib.format('~2.10.0b~2.10.0b~2.10.0b', [hour, minute, second]) |> IO.iodata_to_binary
   end
 end

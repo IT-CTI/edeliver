@@ -125,7 +125,7 @@ erlang_get_and_update_deps() {
         echo \"rebar and rebar3 for mix was built already\"
       fi
       APP=\"$APP\" MIX_ENV=\"$TARGET_MIX_ENV\" $MIX_CMD local.hex --force
-      APP=\"$APP\" MIX_ENV=\"$TARGET_MIX_ENV\" $MIX_CMD deps.get
+      APP=\"$APP\" MIX_ENV=\"$TARGET_MIX_ENV\" $MIX_CMD deps.get --only prod
     fi
   "
   __exec_if_defined "post_erlang_get_and_update_deps"
@@ -236,7 +236,7 @@ erlang_generate_release() {
       $RELX_CMD release
     elif [ \"$RELEASE_CMD\" = \"mix\" ]; then
       echo \"using mix to generate release\"
-      MIX_ENV=\"$TARGET_MIX_ENV\" LINK_SYS_CONFIG=\"$LINK_SYS_CONFIG\" LINK_VM_ARGS=\"$LINK_VM_ARGS\" APP=\"$APP\" AUTO_VERSION=\"$AUTO_VERSION\" BRANCH=\"$BRANCH\" SKIP_RELUP_MODIFICATIONS=\"$SKIP_RELUP_MODIFICATIONS\" RELUP_MODIFICATION_MODULE=\"$RELUP_MODIFICATION_MODULE\" USING_DISTILLERY=\"$USING_DISTILLERY\" $MIX_CMD $_set_auto_version release${_force_no_interaction}${_mix_release_verbose_flag}${_env_flag}${_app_flag}${_upgrade_flag}
+      MIX_ENV=\"$TARGET_MIX_ENV\" LINK_SYS_CONFIG=\"$LINK_SYS_CONFIG\" LINK_VM_ARGS=\"$LINK_VM_ARGS\" APP=\"$APP\" AUTO_VERSION=\"$AUTO_VERSION\" BRANCH=\"$BRANCH\" SKIP_RELUP_MODIFICATIONS=\"$SKIP_RELUP_MODIFICATIONS\" RELUP_MODIFICATION_MODULE=\"$RELUP_MODIFICATION_MODULE\" USING_DISTILLERY=\"$USING_DISTILLERY\" $MIX_CMD $_set_auto_version distillery.release${_force_no_interaction}${_mix_release_verbose_flag}${_env_flag}${_app_flag}${_upgrade_flag}
     fi
   "
 
@@ -309,7 +309,10 @@ copy_release_to_release_store() {
       [ -f ~/.profile ] && source ~/.profile
       set -e
       cd $(dirname ${_release_file}) $SILENCE
-      AWS_ARGUMENTS=\"put ${AWS_BUCKET_NAME}/${APP}_${RELEASE_VERSION}${_release_revision}.${_release_type}.tar.gz $(basename ${_release_file})\" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl $SILENCE <<'EOF'${_aws_script_content}EOF ;" "$HOSTS_APP_USER" "
+      AWS_ARGUMENTS=\"put ${AWS_BUCKET_NAME}/${APP}_${RELEASE_VERSION}${_release_revision}.${_release_type}.tar.gz $(basename ${_release_file})\" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl $SILENCE <<'EOF'
+${_aws_script_content}
+EOF
+" "$HOSTS_APP_USER" "
 
       [ -f ~/.profile ] && source ~/.profile
       set -e
@@ -317,7 +320,8 @@ copy_release_to_release_store() {
       AWS_ARGUMENTS=\"put ${AWS_BUCKET_NAME}/${APP}_${RELEASE_VERSION}${_release_revision}.${_release_type}.tar.gz $(basename ${_release_file})\" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \\
       AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl $SILENCE <<'EOF'
         content from libexec/aws file
-      EOF ;"
+EOF
+"
   elif [ "$RELEASE_STORE_TYPE" = "local" ]; then
     status "Copying $(basename $_release_file) to release store"
     __create_directory_in_release_store "/releases"
@@ -689,7 +693,10 @@ upload_release_archive() {
       set -e
       mkdir -p ${_destination_directory} $SILENCE
       cd ${_destination_directory} $SILENCE
-      AWS_ARGUMENTS=\"get ${AWS_BUCKET_NAME}/${_release_file} \" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl > ${APP}_${_release_version}.tar.gz 2>/dev/null <<'EOF'${_aws_script_content}EOF ;" "$HOSTS_APP_USER" "
+      AWS_ARGUMENTS=\"get ${AWS_BUCKET_NAME}/${_release_file} \" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl > ${APP}_${_release_version}.tar.gz 2>/dev/null <<'EOF'
+${_aws_script_content}
+EOF
+" "$HOSTS_APP_USER" "
 
       [ -f ~/.profile ] && source ~/.profile
       set -e
@@ -698,7 +705,8 @@ upload_release_archive() {
       AWS_ARGUMENTS=\"get ${AWS_BUCKET_NAME}/${_release_file} \" AWS_ACCESS_KEY_ID=\"$AWS_ACCESS_KEY_ID\" \\
       AWS_SECRET_ACCESS_KEY=\"$AWS_SECRET_ACCESS_KEY\" perl > ${APP}_${_release_version}.tar.gz 2>/dev/null <<'EOF'
         content from libexec/aws file
-      EOF ;"
+EOF
+"
   elif [ "$RELEASE_STORE_TYPE" = "local" ]; then
     __remote "
       [ -f ~/.profile ] && source ~/.profile
@@ -811,12 +819,11 @@ __get_node_command() {
   local _node_command="$1"
   local _app_path="$2"
   local _config_arg="$3"
+  local _rpc_command="rpc"
   if [[ "$USING_DISTILLERY" = "true" ]]; then
-    local _rpc_command="rpcterms"
     local _rpc_open_brackets="["
     local _rpc_close_brackets="]"
   else
-    local _rpc_command="rpc"
     local _rpc_open_brackets="[["
     local _rpc_close_brackets="]]"
   fi
@@ -844,7 +851,7 @@ __get_node_command() {
         __edeliver_node_running && break || :
         sleep 1
       done
-      bin/${APP} ${_rpc_command} Elixir.Edeliver run_command '${_rpc_open_brackets}monitor_startup_progress, \"$APP\", $MODE${_rpc_close_brackets}.' | \$output_filter_command \$output_filter_command_options | grep -e 'Started\\|^ok' || :
+      bin/${APP} ${_rpc_command} 'Elixir.Edeliver.run_command(${_rpc_open_brackets}:monitor_startup_progress, \"$APP\", :$MODE${_rpc_close_brackets})' | \$output_filter_command \$output_filter_command_options | grep -e 'Started\\|^ok' || :
     }
     if [ \"$RELEASE_CMD\" = \"mix\" ] && [ \"$_is_start_command\" = \"true\" ]; then
       ping_result=\"\$(bin/${APP} ping | \$output_filter_command \$output_filter_command_options || :)\"
@@ -891,7 +898,8 @@ remote_extract_release_archive() {
   local _release_version=${1:-"$VERSION"}
   local _archive_dir=${2:-"$DELIVER_TO"}
   local _archive="${APP}_${_release_version}.tar.gz"
-  status "Extracting archive ${_archive}"
+  __exec_if_defined "pre_extract_release_archive"
+  status "Extracting archive ${_archive} into ${_archive_dir}"
   # when building releses with mix, the tar does not contain the app name as subdirectory
   [[ "$RELEASE_CMD" = "mix" ]] && _archive_dir="${_archive_dir%%/}/${APP}"
   __remote "
@@ -937,9 +945,12 @@ git_clean_remote() {
     __sync_remote "
       [ -f ~/.profile ] && source ~/.profile
       set -e
-      cd $DELIVER_TO
+      cd $BUILD_AT
       echo \"cleaning files in: $GIT_CLEAN_PATHS\"
-      git clean -ffdx $GIT_CLEAN_PATHS
+      for _clean_path in ${GIT_CLEAN_PATHS[@]}
+      do
+        git clean -ffdx \"\${_clean_path}\"
+      done
     "
   fi
 }

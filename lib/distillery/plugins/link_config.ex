@@ -14,16 +14,16 @@ defmodule Releases.Plugin.LinkConfig do
     end
     ```
   """
-  use Mix.Releases.Plugin
+  use Distillery.Releases.Plugin
 
 
-  def before_assembly(_), do: nil
+  def before_assembly(_, _), do: nil
 
-  def after_assembly(_), do: nil
+  def after_assembly(_, _), do: nil
 
-  def before_package(_), do: nil
+  def before_package(_, _), do: nil
 
-  def after_package(%Release{version: version, profile: profile, name: name} = release) do
+  def after_package(%Release{version: version, profile: profile, name: name}, _) do
     # repackage release tar including link, because tar is generated using `:systools_make.make_tar(...)`
     # which resoves the links using the `:dereference` option when creating the tar using the
     # `:erl_tar` module.
@@ -47,8 +47,8 @@ defmodule Releases.Plugin.LinkConfig do
         :ok = File.mkdir_p tmp_path
         ln_binary = <<_,_::binary>>  = System.find_executable "ln"
         debug "Extracting release tar to #{tmp_dir}"
-        :ok = :erl_tar.extract(tar_file, [{:cwd, to_char_list(tmp_path)}, :compressed])
-        directories_to_include = for dir <- File.ls!(tmp_path), do: {to_char_list(dir), to_char_list(Path.join(tmp_path, dir))}
+        :ok = :erl_tar.extract(tar_file, [{:cwd, to_charlist(tmp_path)}, :compressed])
+        directories_to_include = for dir <- File.ls!(tmp_path), do: {to_charlist(dir), to_charlist(Path.join(tmp_path, dir))}
         for {source, destination} <- files_to_link do
           debug "Linking #{source} to #{destination}"
           {_, 0} = System.cmd ln_binary,  ["-sf", source, destination], stderr_to_stdout: true
@@ -67,7 +67,8 @@ defmodule Releases.Plugin.LinkConfig do
     end
     nil
   end
+  def after_package(_, _), do: nil
 
-  def after_cleanup(_), do: nil
+  def after_cleanup(_, _), do: nil
 
 end

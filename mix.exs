@@ -4,7 +4,8 @@ defmodule Edeliver.Mixfile do
   def project do
     [
       app: :edeliver,
-      version: "1.5.0",
+      version: "1.8.0",
+      elixir: ">= 1.10.0",
       description:  "Build and Deploy Elixir Applications and perform Hot-Code Upgrades and Schema Migrations",
       elixirc_paths: elixirc_paths(),
       package: [
@@ -36,10 +37,10 @@ defmodule Edeliver.Mixfile do
 
   defp deps do
     [
-      {:distillery, ">= 1.0.0", optional: true, warn_missing: false},
-      {:meck, "~> 0.8.9", only: :test},
-      {:earmark, "~> 1.1.0", only: :dev},
-      {:ex_doc, "~> 0.18.2", only: :dev},
+      {:distillery, "~> 2.1.0", optional: true, warn_missing: false},
+      {:meck, "~> 0.8.13", only: :test},
+      {:earmark, "~> 1.0", only: :dev},
+      {:ex_doc, "~> 0.19", only: :dev},
     ]
   end
 

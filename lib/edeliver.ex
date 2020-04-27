@@ -41,7 +41,7 @@ defmodule Edeliver do
 
     started as:
     ```
-    bin/$APP rpc Elixir.Edeliver run_command '[[command_name, \"$APP\", arguments...]].'
+    bin/$APP rpc 'Elixir.Edeliver.run_command('[command_name, \"$APP\", arguments...])'
     ```
 
     The first argument must be the name of the command, the second argument the
@@ -49,17 +49,16 @@ defmodule Edeliver do
     function thats name is equal to the command name.
   """
   @spec run_command(args::[term]) :: no_return
-  def run_command([:monitor_startup_progress, application_name = [_|_], :verbose]) do
+  def run_command([:monitor_startup_progress, application_name, :verbose]) do
     :error_logger.add_report_handler Edeliver.StartupProgress
     monitor_startup_progress(application_name)
     :error_logger.delete_report_handler Edeliver.StartupProgress
   end
-  def run_command([:monitor_startup_progress, application_name = [_|_] | _]) do
+  def run_command([:monitor_startup_progress, application_name | _]) do
     monitor_startup_progress(application_name)
   end
-  def run_command([command_name, application_name = [_|_] | arguments]) when is_atom(command_name) do
-    application_name = to_string(application_name)
-    application_name = String.to_atom(to_string(application_name))
+  def run_command([command_name, application_name | arguments]) when is_atom(command_name) do
+    application_name = String.to_atom(application_name)
     {^application_name, _description, application_version} = :application.which_applications |> List.keyfind(application_name, 0)
     application_version = to_string application_version
     apply __MODULE__, command_name, [application_name, application_version | arguments]
@@ -135,6 +134,10 @@ defmodule Edeliver do
     lib_dir = :code.priv_dir(application_name) |> to_string |> Path.dirname |> Path.dirname
     application_with_version = "#{Atom.to_string(application_name)}-#{application_version}"
     Path.join([lib_dir, application_with_version, "priv", "repo", "migrations"])
+  end
+
+  def init(args) do
+    {:ok, args}
   end
 
   defp ecto_repository!(_application_name, ecto_repository = [_|_] ) do

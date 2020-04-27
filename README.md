@@ -1,4 +1,4 @@
-<img src="http://boldpoker.net/images/edeliver_500.png" width=120>
+<img src="https://raw.githubusercontent.com/edeliver/edeliver/master/docs/logo.png" width=120>
 
 # edeliver
 
@@ -13,6 +13,13 @@ The [erlang releases](http://www.erlang.org/doc/design_principles/release_handli
 
 Once built, the [release](http://www.erlang.org/doc/design_principles/release_handling.html) contains the full [erts (erlang runtime system)](http://erlang.org/doc/apps/erts/users_guide.html), all [dependencies (erlang or elixir applications)](http://www.erlang.org/doc/design_principles/applications.html), the Elixir runtime, native port drivers, and your erlang/elixir application(s) in a standalone embedded node.
 
+## Version compatibility
+
+| Edeliver  | Elixir |
+|---------- |--------|
+| 1.8.*     | 1.10.* |
+| 1.7.*     | 1.9.*  |
+| 1.6.*     | 1.8.*  |
 
 ## Community
 
@@ -52,8 +59,8 @@ def application, do: [
 defp deps do
   [
     ...
-    {:edeliver, "~> 1.5.0"},
-    {:distillery, "~> 1.0.0", warn_missing: false},
+    {:edeliver, ">= 1.6.0"},
+    {:distillery, "~> 2.0", warn_missing: false},
   ]
 end
 ```
@@ -142,8 +149,8 @@ If using [mix](http://elixir-lang.org/getting_started/mix/1.html), add edeliver 
 ```exs
 defp deps do
   [
-    {:edeliver, ">= 1.4.5"},
-    {:distillery, "~> 1.0.0", warn_missing: false},
+    {:edeliver, ">= 1.6.0"},
+    {:distillery, "~> 2.0", warn_missing: false},
   ]
 end
 ```
@@ -271,7 +278,7 @@ The reason for that is, that when the upgrade is build with rebar, rebar tries t
 
     mix edeliver deploy release|upgrade [[to] staging|production] [--version=<release-version>] [Options]
 
-Deploy commands deliver the builds that were created with a build command to your staging or production hosts.  They can also perform a live code upgrade.  Built releasees or upgrades are available in your local directory `.deliver/releases`.  To deploy releases the following configuration variables must be set:
+Deploy commands deliver the builds that were created with a build command to your staging or production hosts.  They can also perform a live code upgrade.  Built releases or upgrades are available in your local directory `.deliver/releases`.  To deploy releases the following configuration variables must be set:
 
 - `APP`: the name of your release which should be built
 - `PRODUCTION_HOSTS`: the production hosts to deploy to, separated by space
